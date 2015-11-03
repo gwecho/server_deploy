@@ -1,0 +1,94 @@
+nginx_uwsgi.conf
+	{
+		......
+		include /usr/local/sinawap/nginx/conf/uwsgi_params
+		uwsgi_cache_path /dev/shm/docget levels=1:2 keys_zone=doc_get_cache:2048m
+        inactive=10m max_size=10240m;
+    	
+    	uwsgi_cache_path /dev/shm/searchlist levels=1:2 keys_zone=search_list_cache:2048m
+        inactive=1m max_size=10240m;
+        
+        server{
+        	......
+        	uwsgi_......
+        	uwsgi_cache_key $flag
+        	uwsgi_cache_methods GET;
+        	uwsgi_cache_min_uses 2;
+        	uwsgi_cache_valid 200 302 1m;
+        	......
+        	location = /api/doc/get{
+        		include .../conf/doc_get_cache.conf;
+        		uwsgi_cache doc_get_cache;
+              	uwsgi_cache_bypass $bypass;
+              	uwsgi_no_cache $nocache;
+            	uwsgi_cache_key $keyword;
+	            uwsgi_cache_methods GET;
+	            uwsgi_cache_min_uses 3;
+	            uwsgi_cache_valid 200 302 10m;
+
+                add_header X-CMSDS-uWSGI-Cache $upstream_cache_status;
+        	}
+        	......
+        }
+        ......
+	}
+	
+	
+doc_get_cache.conf:
+	set $keyword "/api/doc/get";
+	set $flag "";
+	set $bypass "0";
+	set $nocache "0";
+	
+	if ($arg_FROMCACHE = "0"){
+	    set $nocache "1";
+	    set $bypass "1";
+	}
+	
+	if ($arg_FROMCACHE = "1"){
+	    set $nocache "0";
+	}
+	
+	if ($arg_SAVE2CACHE = "1"){
+	    set $bypass "1";
+	}
+	
+	if ($arg_appID){
+	    set $flag "${flag}appID";
+	}
+	
+	if ($arg_appName){
+	    set $flag "${flag}appName";
+	}
+	
+	if ($flag ~* 'appIDappName'){
+	    set $keyword "app:$arg_appID-$arg_appName";
+	}
+	
+	if ($arg_URL){
+	    set $keyword "URL:$arg_URL";
+	}
+	if ($arg_docID){
+	    set $keyword "docID:$arg_docID";
+	}
+	if ($keyword ~* "^$"){
+	    return 403;
+	}
+	
+	
+uwsgi_params:
+	uwsgi_param  QUERY_STRING       $query_string;
+	uwsgi_param  REQUEST_METHOD     $request_method;
+	uwsgi_param  CONTENT_TYPE       $content_type;
+	uwsgi_param  CONTENT_LENGTH     $content_length;
+	
+	uwsgi_param  REQUEST_URI        $request_uri;
+	uwsgi_param  PATH_INFO          $document_uri;
+	uwsgi_param  DOCUMENT_ROOT      $document_root;
+	uwsgi_param  SERVER_PROTOCOL    $server_protocol;
+	uwsgi_param  HTTPS              $https if_not_empty;
+	
+	uwsgi_param  REMOTE_ADDR        $remote_addr;
+	uwsgi_param  REMOTE_PORT        $remote_port;
+	uwsgi_param  SERVER_PORT        $server_port;
+	uwsgi_param  SERVER_NAME        $server_name;
