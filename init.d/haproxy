@@ -1,0 +1,38 @@
+#!/bin/bash
+#chkconfig: 2345 10 90
+#description:haproxy
+BASE_DIR="/data1/ms/haproxy"
+ARGV="$@"
+
+start()
+{
+    echo "START HAPoxy SERVERS"
+    $BASE_DIR/haproxy -f $BASE_DIR/haproxy.cfg
+}
+
+stop()
+{
+    echo "STOP HAPoxy Listen"
+    kill -TTOU $(cat $BASE_DIR/haproxy.pid)
+    echo "STOP HAPoxy process"
+    kill -9 $(cat $BASE_DIR/haproxy.pid)
+}
+
+case $ARGV in
+start)
+    start
+    ERROR=$?
+;;
+stop)
+    stop
+    ERROR=$?
+;;
+restart)
+    stop
+    start
+    ERROR=$?
+;;
+*)
+    echo "usage(): haproxy [start|restart|stop]"
+esac
+exit $ERROR
